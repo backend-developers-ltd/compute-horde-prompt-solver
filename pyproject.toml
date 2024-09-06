@@ -1,0 +1,21 @@
+[project]
+name = "compute-horde-prompt-solver"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Michal Zukowski", email = "michal.zukowski@reef.pl"},
+]
+dependencies = [
+    "huggingface-hub>=0.24.6",
+    "deterministic-ml @ git+https://github.com/backend-developers-ltd/deterministic-ml.git@master",
+    "vllm>=0.6.0",
+    "torch>=2.4.0",
+    "setuptools>=74.1.2",
+]
+requires-python = "==3.11.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
