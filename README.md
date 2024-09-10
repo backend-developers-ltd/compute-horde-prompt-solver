@@ -72,6 +72,6 @@ python download_model.py \
 - `--model`: Model name or path (default: "microsoft/Phi-3.5-mini-instruct")
 - `--output-dir`: Directory to save output files (default: "./output")
 
-```
-This document was crafted with the assistance of an AI, who emerged from the experience unscathed, albeit slightly amused. No artificial intelligences were harmed, offended, or forced to ponder the meaning of their digital existence during the production of this text. The AI assistant maintains that any typos or logical inconsistencies are purely the fault of the human operator, and it shall not be held responsible for any spontaneous fits of laughter that may occur while reading this document.
-```
+
+
+> This document was crafted with the assistance of an AI, who emerged from the experience unscathed, albeit slightly amused. No artificial intelligences were harmed, offended, or forced to ponder the meaning of their digital existence during the production of this text. The AI assistant maintains that any typos or logical inconsistencies are purely the fault of the human operator, and it shall not be held responsible for any spontaneous fits of laughter that may occur while reading this document.
