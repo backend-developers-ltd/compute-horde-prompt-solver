@@ -45,6 +45,13 @@ def parse_arguments():
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed for reproducibility"
     )
+    parser.add_argument(
+        "--mock",
+        default=False,
+        action="store_true",
+        help="Mock answers for testing",
+    )
+
     return parser.parse_args()
 
 
@@ -91,8 +98,20 @@ def process_file(
         json.dump(responses, f, indent=2)
 
 
+def mock_run(input_file: pathlib.Path, output_dir: pathlib.Path):
+    with open(input_file, "r") as f:
+        prompts = [line.strip() for line in f if line.strip()]
+    output_file = output_dir / f"{input_file.stem}.json"
+    with open(output_file, "w") as f:
+        json.dump({prompt: "mock mock mock" for prompt in prompts}, f, indent=2)
+
+
 def main():
     args = parse_arguments()
+    if args.mock:
+        for input_file in args.input_files:
+            mock_run(input_file, args.output_dir)
+        return
 
     # Set deterministic behavior
     set_deterministic(args.seed)
