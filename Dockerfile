@@ -19,6 +19,25 @@ RUN mkdir /output
 COPY pdm.lock pyproject.toml /app/
 
 RUN pdm install
+# RUN pdm run pip install vllm
+
+RUN git clone https://github.com/vllm-project/vllm.git && \
+    cd vllm && \
+    python3 use_existing_torch.py && \
+    cd ..
+
+RUN pip install https://vllm-wheels.s3.us-west-2.amazonaws.com/nightly/vllm-1.0.0.dev-cp38-abi3-manylinux1_x86_64.whl
+RUN pdm add setuptools-scm
+RUN cd vllm && \
+    sed -i 's/^    os.symlink(current_vllm_path, pre_built_vllm_path)/#    os.symlink(current_vllm_path, pre_built_vllm_path)/' python_only_dev.py && \
+    sed -i '/os.rename(pre_built_vllm_path, tmp_path)/s/^/#/' python_only_dev.py && \
+    python3 python_only_dev.py && \
+    cd ..
+RUN pdm add pip
+RUN pdm run python -mpip install -r vllm/requirements-build.txt
+RUN . .venv/bin/activate && cd vllm && pip install -r requirements-cuda.txt && cd ..
+RUN pdm run python -c 'import psutil'
+RUN . .venv/bin/activate && cd vllm pip install -e . --no-build-isolation && cd ..
 
 COPY download_model.py /app/
 
