@@ -8,9 +8,12 @@ authors = [
 dependencies = [
     "huggingface-hub>=0.24.6",
     "deterministic-ml @ git+https://github.com/backend-developers-ltd/deterministic-ml.git@master",
-    "vllm>=0.6.0",
-    "torch>=2.4.0",
+#    "vllm==0.6.0",
     "setuptools>=74.1.2",
+    "torch==2.6.0.dev20241011",
+    "torchaudio==2.5.0.dev20241011",
+    "torchvision==0.20.0.dev20241011",
+    "pytorch-triton @ https://download.pytorch.org/whl/nightly/pytorch_triton-3.1.0%2Bcf34004b8a-cp311-cp311-linux_x86_64.whl#sha256=b4a64c048b090cb9781de1e1cc9022d03195b867450644d3bb3207be2190e3a3",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
@@ -19,3 +22,15 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.resolution]
+respect-source-order = true
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[[tool.pdm.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/nightly/cu121"
+
