@@ -9,8 +9,8 @@ dependencies = [
     "huggingface-hub>=0.24.6",
     "deterministic-ml @ git+https://github.com/backend-developers-ltd/deterministic-ml.git@master",
     "vllm>=0.6.0",
-    "torch>=2.4.0",
     "setuptools>=74.1.2",
+    "torch==2.6.0.dev20241011",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
@@ -19,3 +19,15 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+
+[tool.pdm.resolution]
+respect-source-order = true
+
+[[tool.pdm.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/nightly/cu121"
+
+[[tool.pdm.source]]
+name = "pypi"
+url = "https://pypi.org/simple"
