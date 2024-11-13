@@ -116,7 +116,6 @@ def process_file(
 
 
 def _run_server(seed_queue, args):
-    model = setup_model(args.model)
     app = Flask("compute_horde_prompt_solver")
 
     @app.route("/health")
