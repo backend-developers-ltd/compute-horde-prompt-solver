@@ -2,7 +2,9 @@ import argparse
 import json
 import multiprocessing
 import pathlib
+import queue
 import time
+from datetime import timedelta
 from typing import List, Dict
 
 import torch
@@ -113,7 +115,7 @@ def process_file(
         json.dump(responses, f, indent=2)
 
 
-def _run_server(exit_event, args):
+def _run_server(seed_queue, args):
     model = setup_model(args.model)
     app = Flask("compute_horde_prompt_solver")
 
@@ -126,20 +128,14 @@ def _run_server(exit_event, args):
         try:
             from flask import request
 
-            seed = request.json.get("seed")
-            sampling_params = SamplingParams(
-                max_tokens=args.max_tokens,
-                temperature=args.temperature,
-                top_p=args.top_p,
-                seed=seed,
-            )
-
-            for input_file in args.input_files:
-                process_file(model, input_file, args.output_dir, sampling_params)
-
+            seed_raw = request.json.get("seed")
+            seed = int(seed_raw)
+            seed_queue.put(seed)
             return "", 200
         finally:
-            exit_event.set()
+            # The seed_queue.put(seed) can fail (request not having int seed etc.),
+            # so we always put a None to make sure process is terminated when the view returns.
+            seed_queue.put(None)
 
     app.run(
         host="0.0.0.0",
@@ -148,37 +144,48 @@ def _run_server(exit_event, args):
     )
 
 
-def run_server(args):
-    exit_event = multiprocessing.Event()
-    process = multiprocessing.Process(target=_run_server, args=(exit_event, args))
+def get_seed_from_request(args):
+    seed_queue = multiprocessing.Queue()
+    process = multiprocessing.Process(target=_run_server, args=(seed_queue, args))
     process.start()
-    exit_event.wait()
 
-    # exit_event is triggered as soon as view function returns.
+    try:
+        seed = seed_queue.get(block=True, timeout=5 * 60)
+    except queue.Empty:
+        seed = None
+
+    # seed_queue is triggered *before* the view function returns.
     # wait some time for the returned value to be sent out as response.
     time.sleep(0.2)
-
     process.terminate()
+
+    if seed is None:
+        raise SystemExit("ERROR: provided seed is malformed!")
+
+    return seed
 
 
 def main():
     args = parse_arguments()
 
-    # Set deterministic behavior
-    set_deterministic(args.seed)
-
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.server:
-        run_server(args)
-        return
-
+    # TODO: make sure if it is ok to load model before calling set_deterministic()!!
     model = setup_model(args.model, dtype=args.dtype)
+
+    if args.server:
+        seed = get_seed_from_request(args)
+    else:
+        seed = args.seed
+
+    # Set deterministic behavior
+    set_deterministic(seed)
+
     sampling_params = SamplingParams(
         max_tokens=args.max_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
-        seed=args.seed,
+        seed=seed,
     )
 
     for input_file in args.input_files:
