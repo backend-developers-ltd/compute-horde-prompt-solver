@@ -4,7 +4,6 @@ import multiprocessing
 import pathlib
 import queue
 import time
-from datetime import timedelta
 from typing import List, Dict
 
 import torch
