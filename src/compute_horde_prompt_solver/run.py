@@ -191,5 +191,6 @@ def main():
 
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method("spawn")
+    import torch
+    torch.multiprocessing.set_start_method("spawn")
     main()
