@@ -1,10 +1,13 @@
 import argparse
 import json
+import multiprocessing
 import pathlib
+import time
 from typing import List, Dict
 
 import torch
 import vllm
+from flask import Flask
 from vllm import SamplingParams
 
 # Import the set_deterministic function
@@ -51,6 +54,17 @@ def parse_arguments():
         help=(
             "model dtype - setting `float32` helps with deterministic prompts in different batches"
         )
+    )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        help="Spin up a temporary HTTP server to receive the seed",
+    )
+    parser.add_argument(
+        "--server-port",
+        type=int,
+        default=8000,
+        help="Port for temporary HTTP server",
     )
     return parser.parse_args()
 
@@ -99,6 +113,54 @@ def process_file(
         json.dump(responses, f, indent=2)
 
 
+def _run_server(exit_event, args):
+    model = setup_model(args.model)
+    app = Flask("compute_horde_prompt_solver")
+
+    @app.route("/health")
+    def server_healthcheck():
+        return {"status": "ok"}
+
+    @app.route("/execute-job", methods=["POST"])
+    def execute_job():
+        try:
+            from flask import request
+
+            seed = request.json.get("seed")
+            sampling_params = SamplingParams(
+                max_tokens=args.max_tokens,
+                temperature=args.temperature,
+                top_p=args.top_p,
+                seed=seed,
+            )
+
+            for input_file in args.input_files:
+                process_file(model, input_file, args.output_dir, sampling_params)
+
+            return "", 200
+        finally:
+            exit_event.set()
+
+    app.run(
+        host="0.0.0.0",
+        port=args.server_port,
+        debug=False,
+    )
+
+
+def run_server(args):
+    exit_event = multiprocessing.Event()
+    process = multiprocessing.Process(target=_run_server, args=(exit_event, args))
+    process.start()
+    exit_event.wait()
+
+    # exit_event is triggered as soon as view function returns.
+    # wait some time for the returned value to be sent out as response.
+    time.sleep(0.2)
+
+    process.terminate()
+
+
 def main():
     args = parse_arguments()
 
@@ -106,6 +168,10 @@ def main():
     set_deterministic(args.seed)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.server:
+        run_server(args)
+        return
 
     model = setup_model(args.model, dtype=args.dtype)
     sampling_params = SamplingParams(
