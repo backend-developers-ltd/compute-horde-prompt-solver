@@ -150,10 +150,6 @@ def _run_server(start_server_event, seed_queue, args):
 def main():
     args = parse_arguments()
 
-    # TODO: start the sub-process, and wait for model load to finish
-    #       after the model setup is done, send a signal(queue?), so http server will start serving!
-    #       start the flask server!!
-    #       PROFIT!!
     start_server_event = mp.Event()
     seed_queue = mp.Queue()
     process = mp.Process(target=_run_server, args=(start_server_event, seed_queue, args))
