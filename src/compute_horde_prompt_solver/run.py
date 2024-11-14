@@ -1,6 +1,6 @@
 import argparse
 import json
-import multiprocessing
+import multiprocessing as mp
 import pathlib
 import queue
 import time
@@ -114,7 +114,12 @@ def process_file(
         json.dump(responses, f, indent=2)
 
 
-def _run_server(seed_queue, args):
+def _run_server(start_server_event, seed_queue, args):
+    if not args.server:
+        return
+
+    start_server_event.wait()
+
     app = Flask("compute_horde_prompt_solver")
 
     @app.route("/health")
@@ -142,39 +147,40 @@ def _run_server(seed_queue, args):
     )
 
 
-def get_seed_from_request(args):
-    seed_queue = multiprocessing.Queue()
-    process = multiprocessing.Process(target=_run_server, args=(seed_queue, args))
-    process.start()
-
-    try:
-        seed = seed_queue.get(block=True, timeout=5 * 60)
-    except queue.Empty:
-        seed = None
-
-    # seed_queue is triggered *before* the view function returns.
-    # wait some time for the returned value to be sent out as response.
-    time.sleep(0.2)
-    process.terminate()
-
-    if seed is None:
-        raise SystemExit("ERROR: provided seed is malformed!")
-
-    return seed
-
-
 def main():
     args = parse_arguments()
+
+    # TODO: start the sub-process, and wait for model load to finish
+    #       after the model setup is done, send a signal(queue?), so http server will start serving!
+    #       start the flask server!!
+    #       PROFIT!!
+    start_server_event = mp.Event()
+    seed_queue = mp.Queue()
+    process = mp.Process(target=_run_server, args=(start_server_event, seed_queue, args))
+    process.start()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     # TODO: make sure if it is ok to load model before calling set_deterministic()!!
     model = setup_model(args.model, dtype=args.dtype)
 
+    start_server_event.set()
+
     if args.server:
-        seed = get_seed_from_request(args)
+        try:
+            seed = seed_queue.get(block=True, timeout=5 * 60)
+        except queue.Empty:
+            seed = None
+
+        # seed_queue is triggered *before* the view function returns.
+        # wait some time for the returned value to be sent out as response.
+        time.sleep(0.2)
+        process.terminate()
     else:
         seed = args.seed
+
+    if seed is None:
+        raise SystemExit("ERROR: provided seed is malformed!")
 
     # Set deterministic behavior
     set_deterministic(seed)
@@ -191,6 +197,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import torch
-    torch.multiprocessing.set_start_method("spawn")
     main()
