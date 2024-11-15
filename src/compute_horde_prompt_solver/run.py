@@ -45,16 +45,24 @@ def parse_arguments():
     parser.add_argument(
         "--seed", type=int, default=42, help="Random seed for reproducibility"
     )
+    parser.add_argument(
+        "--dtype", default="auto",
+        choices=("auto", "half", "float16", "bfloat16", "float", "float32"),
+        help=(
+            "model dtype - setting `float32` helps with deterministic prompts in different batches"
+        )
+    )
     return parser.parse_args()
 
 
-def setup_model(model_name: str) -> vllm.LLM:
+def setup_model(model_name: str, dtype: str = "auto") -> vllm.LLM:
     gpu_count = torch.cuda.device_count()
     return vllm.LLM(
         model=model_name,
         tensor_parallel_size=gpu_count,
         max_model_len=6144,
         enforce_eager=True,
+        dtype=dtype,
     )
 
 
