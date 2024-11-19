@@ -47,26 +47,30 @@ def parse_arguments():
         "--top-p", type=float, default=0.1, help="Top-p sampling parameter"
     )
     parser.add_argument(
-        "--seed", type=int, default=42, help="Random seed for reproducibility"
-    )
-    parser.add_argument(
         "--dtype", default="auto",
         choices=("auto", "half", "float16", "bfloat16", "float", "float32"),
         help=(
             "model dtype - setting `float32` helps with deterministic prompts in different batches"
         )
     )
-    parser.add_argument(
+
+    seed_or_server_group = parser.add_mutually_exclusive_group(required=True)
+    seed_or_server_group.add_argument(
+        "--seed", type=int, help="Random seed for reproducibility"
+    )
+    seed_or_server_group.add_argument(
         "--server",
         action="store_true",
         help="Spin up a temporary HTTP server to receive the seed",
     )
+
     parser.add_argument(
         "--server-port",
         type=int,
         default=8000,
         help="Port for temporary HTTP server",
     )
+
     return parser.parse_args()
 
 
@@ -157,7 +161,6 @@ def main():
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: make sure if it is ok to load model before calling set_deterministic()!!
     model = setup_model(args.model, dtype=args.dtype)
 
     start_server_event.set()
