@@ -1,10 +1,14 @@
 import argparse
 import json
+import multiprocessing as mp
 import pathlib
+import queue
+import time
 from typing import List, Dict
 
 import torch
 import vllm
+from flask import Flask
 from vllm import SamplingParams
 
 # Import the set_deterministic function
@@ -43,15 +47,30 @@ def parse_arguments():
         "--top-p", type=float, default=0.1, help="Top-p sampling parameter"
     )
     parser.add_argument(
-        "--seed", type=int, default=42, help="Random seed for reproducibility"
-    )
-    parser.add_argument(
         "--dtype", default="auto",
         choices=("auto", "half", "float16", "bfloat16", "float", "float32"),
         help=(
             "model dtype - setting `float32` helps with deterministic prompts in different batches"
         )
     )
+
+    seed_or_server_group = parser.add_mutually_exclusive_group(required=True)
+    seed_or_server_group.add_argument(
+        "--seed", type=int, help="Random seed for reproducibility"
+    )
+    seed_or_server_group.add_argument(
+        "--server",
+        action="store_true",
+        help="Spin up a temporary HTTP server to receive the seed",
+    )
+
+    parser.add_argument(
+        "--server-port",
+        type=int,
+        default=8000,
+        help="Port for temporary HTTP server",
+    )
+
     return parser.parse_args()
 
 
@@ -99,20 +118,77 @@ def process_file(
         json.dump(responses, f, indent=2)
 
 
+def _run_server(start_server_event, seed_queue, args):
+    if not args.server:
+        return
+
+    start_server_event.wait()
+
+    app = Flask("compute_horde_prompt_solver")
+
+    @app.route("/health")
+    def server_healthcheck():
+        return {"status": "ok"}
+
+    @app.route("/execute-job", methods=["POST"])
+    def execute_job():
+        try:
+            from flask import request
+
+            seed_raw = request.json.get("seed")
+            seed = int(seed_raw)
+            seed_queue.put(seed)
+            return "", 200
+        finally:
+            # The seed_queue.put(seed) can fail (request not having int seed etc.),
+            # so we always put a None to make sure process is terminated when the view returns.
+            seed_queue.put(None)
+
+    app.run(
+        host="0.0.0.0",
+        port=args.server_port,
+        debug=False,
+    )
+
+
 def main():
     args = parse_arguments()
 
-    # Set deterministic behavior
-    set_deterministic(args.seed)
+    start_server_event = mp.Event()
+    seed_queue = mp.Queue()
+    process = mp.Process(target=_run_server, args=(start_server_event, seed_queue, args))
+    process.start()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     model = setup_model(args.model, dtype=args.dtype)
+
+    start_server_event.set()
+
+    if args.server:
+        try:
+            seed = seed_queue.get(block=True, timeout=5 * 60)
+        except queue.Empty:
+            seed = None
+
+        # seed_queue is triggered *before* the view function returns.
+        # wait some time for the returned value to be sent out as response.
+        time.sleep(0.2)
+        process.terminate()
+    else:
+        seed = args.seed
+
+    if seed is None:
+        raise SystemExit("ERROR: provided seed is malformed!")
+
+    # Set deterministic behavior
+    set_deterministic(seed)
+
     sampling_params = SamplingParams(
         max_tokens=args.max_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
-        seed=args.seed,
+        seed=seed,
     )
 
     for input_file in args.input_files:
