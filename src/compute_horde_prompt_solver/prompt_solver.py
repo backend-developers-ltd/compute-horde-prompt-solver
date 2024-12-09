@@ -10,7 +10,7 @@ from typing import List, Dict
 
 import torch
 import vllm
-from flask import Flask, Blueprint, jsonify
+from flask import Flask, jsonify
 from vllm import SamplingParams
 
 # Import the set_deterministic function
@@ -30,14 +30,7 @@ class GPULLMProvider(BaseLLMProvider):
     def __init__(self, model_name: str, dtype: str = "auto"):
         self.model_name = model_name
         self.dtype = dtype
-        self._model = None
-
-    @property
-    def model(self):
-        if self._model is None:
-            return self._model
-        self._model = self.setup_model()
-        return self._model
+        self.model = self.setup_model()
 
     def setup_model(self) -> vllm.LLM:
         gpu_count = torch.cuda.device_count()

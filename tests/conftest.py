@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture()
 def input_file() -> str:
     path = pathlib.Path(__file__).parent / "payload" / "prompts.txt"
-    tmp_path = tempfile.mktemp()
+    _, tmp_path = tempfile.mkstemp()
     shutil.copy(path.as_posix(), tmp_path)
     yield tmp_path
     if os.path.isfile(tmp_path):
