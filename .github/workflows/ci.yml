@@ -40,4 +40,4 @@ jobs:
       - name: list
         run: pdm list
       - name: Run unit tests
-        run: pdm run pytest tests/integration_mock/
+        run: python -m pytest tests/integration_mock/

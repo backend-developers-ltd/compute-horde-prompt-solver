@@ -168,7 +168,7 @@ class HttpSolver(BaseSolver):
         self.response_hashes: Dict[str, str] = {}
 
     def save_output_file(self, responses: Dict[str, str], output_file: pathlib.Path):
-        response_body = json.dumps(responses, indent=2).encode()
+        response_body = json.dumps(responses, indent=2, sort_keys=True).encode()
         self.response_hashes[output_file.as_posix()] = hashlib.sha256(response_body).hexdigest()
         pathlib.Path(output_file).write_bytes(response_body)
 
