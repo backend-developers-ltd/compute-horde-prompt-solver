@@ -47,11 +47,12 @@ def parse_arguments():
         "--top-p", type=float, default=0.1, help="Top-p sampling parameter"
     )
     parser.add_argument(
-        "--dtype", default="auto",
+        "--dtype",
+        default="auto",
         choices=("auto", "half", "float16", "bfloat16", "float", "float32"),
         help=(
             "model dtype - setting `float32` helps with deterministic prompts in different batches"
-        )
+        ),
     )
 
     seed_or_server_group = parser.add_mutually_exclusive_group(required=True)
@@ -69,6 +70,13 @@ def parse_arguments():
         type=int,
         default=8000,
         help="Port for temporary HTTP server",
+    )
+
+    parser.add_argument(
+        "--mock",
+        default=False,
+        action="store_true",
+        help="Mock answers for testing",
     )
 
     return parser.parse_args()
@@ -151,12 +159,23 @@ def _run_server(start_server_event, seed_queue, args):
     )
 
 
+def mock_run(input_file: pathlib.Path, output_dir: pathlib.Path):
+    with open(input_file, "r") as f:
+        prompts = [line.strip() for line in f if line.strip()]
+
+    output_file = output_dir / f"{input_file.stem}.json"
+    with open(output_file, "w") as f:
+        json.dump({prompt: "mock mock mock" for prompt in prompts}, f, indent=2)
+
+
 def main():
     args = parse_arguments()
 
     start_server_event = mp.Event()
     seed_queue = mp.Queue()
-    process = mp.Process(target=_run_server, args=(start_server_event, seed_queue, args))
+    process = mp.Process(
+        target=_run_server, args=(start_server_event, seed_queue, args)
+    )
     process.start()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -190,6 +209,11 @@ def main():
         top_p=args.top_p,
         seed=seed,
     )
+
+    if args.mock:
+        for input_file in args.input_files:
+            mock_run(input_file, args.output_dir)
+        return
 
     for input_file in args.input_files:
         process_file(model, input_file, args.output_dir, sampling_params)
