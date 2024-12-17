@@ -34,10 +34,10 @@ jobs:
       - name: Install dependencies
         run: pdm sync --group :all
       - name: Install test dependencies
-        run: pdm sync --group test; pip install pytest 'requests>=2.32.3,<3.0.0'
+        run: pdm sync --group test; pdm add pytest 'requests>=2.32.3,<3.0.0'
         # for the life of me I don't understand why pdm refuses to
         # install pytest in github actions
       - name: list
         run: pdm list
       - name: Run unit tests
-        run: python -m pytest tests/integration_mock/
+        run: pdm run python -m pytest tests/integration_mock/
