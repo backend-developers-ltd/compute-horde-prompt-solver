@@ -1,0 +1,43 @@
+name: Run QA
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  PYTHON_DEFAULT_VERSION: "3.11"
+
+jobs:
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python ${{ env.PYTHON_DEFAULT_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+          cache: "pip"
+      - name: Install dependencies
+        run: python -m pip install --upgrade 'pdm==2.19.3'
+      - name: Setup virtualenv
+        run: |
+          pdm config venv.backend venv
+          python -m venv .venv
+          echo "$.venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=${{ github.workspace }}/.venv" >> $GITHUB_ENV
+          echo "PDM_IGNORE_SAVED_PYTHON=1" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: pdm sync --group :all
+      - name: Install test dependencies
+        run: pdm sync --group test; pdm add pytest 'requests>=2.32.3,<3.0.0'
+        # for the life of me I don't understand why pdm refuses to
+        # install pytest in github actions
+      - name: list
+        run: pdm list
+      - name: Run unit tests
+        run: pdm run python -m pytest tests/integration_mock/

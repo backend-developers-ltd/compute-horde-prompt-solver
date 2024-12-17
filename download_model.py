@@ -27,6 +27,7 @@ if __name__ == "__main__":
     snapshot_download(
         repo_id=args.model_name,
         local_dir=args.model_path,
+        revision=args.model_revision,
     )
 
     print(f"Model files downloaded to {args.model_path}")

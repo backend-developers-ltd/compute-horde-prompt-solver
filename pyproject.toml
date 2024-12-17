@@ -8,7 +8,7 @@ authors = [
 dependencies = [
     "huggingface-hub>=0.24.6",
     "deterministic-ml @ git+https://github.com/backend-developers-ltd/deterministic-ml.git@master",
-    "vllm>=0.6.0",
+    "vllm==0.6.0",
     "torch>=2.4.0",
     "setuptools>=74.1.2",
     "flask>=3.0.3",
@@ -16,6 +16,11 @@ dependencies = [
 requires-python = "==3.11.*"
 readme = "README.md"
 license = {text = "MIT"}
+[dependency-groups]
+test = [
+    "pytest",
+    "requests>=2.0.0,<3.0.0"
+]
 
 
 [tool.pdm]

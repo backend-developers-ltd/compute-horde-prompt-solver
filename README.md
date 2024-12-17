@@ -6,6 +6,9 @@ A tool for generating responses to prompts using vLLM, primarily designed for us
 
 This project provides a script for generating responses to prompts using the vLLM library. It's designed to be flexible and can be run in various environments, including Docker containers and directly from Python.
 
+There is `--mock` that allows for running smoke tests that allow to validate the interface without actaully downloading
+a model or having a GPU.
+
 ## Features
 
 - Generate responses for multiple prompts
@@ -13,6 +16,8 @@ This project provides a script for generating responses to prompts using the vLL
 - Support for multiple input files
 - Deterministic output with seed setting
 - Docker support for easy deployment
+- Can be started with a seed known ad-hoc or as an http server which will wait for a seed and then call the model. 
+  This server is designed to serve one request and then be told to shut down 
 
 ## Installation
 
@@ -22,6 +27,10 @@ The project uses `pdm` for dependency management. To install dependencies:
 pdm install
 ```
 
+## Testing
+
+Tests in `integration_mock` are light and can be run on any platform, the ones in `integration_real_llm` will only pass
+with an actual nvidia A6000.    
 ## Usage
 
 ### Running with Docker
@@ -57,10 +66,7 @@ python run.py \
 To download the model for use in a Docker image:
 
 ```bash
-python download_model.py \
-  --model-name "microsoft/Phi-3.5-mini-instruct" \
-  --model-revision "cd6881a82d62252f5a84593c61acf290f15d89e3" \
-  --model-path "./saved_model/"
+python download_model.py
 ```
 
 ## Parameters
