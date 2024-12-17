@@ -23,7 +23,9 @@ TIMEOUT = 5 * 60
 
 class BaseLLMProvider(abc.ABC):
     @abc.abstractmethod
-    def generate_responses(self, prompts: List[str], sampling_params: SamplingParams) -> Dict[str, str]: ...
+    def generate_responses(
+        self, prompts: List[str], sampling_params: SamplingParams
+    ) -> Dict[str, str]: ...
 
 
 class GPULLMProvider(BaseLLMProvider):
@@ -44,37 +46,44 @@ class GPULLMProvider(BaseLLMProvider):
 
     def make_prompt(self, prompt: str) -> str:
         system_msg = "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{{{{ You are a helpful AI assistant }}}}<|eot_id|>"
-        user_msg = f"<|start_header_id|>user<|end_header_id|>\n{{{{ {prompt} }}}}<|eot_id|>"
+        user_msg = (
+            f"<|start_header_id|>user<|end_header_id|>\n{{{{ {prompt} }}}}<|eot_id|>"
+        )
         assistant_start = "<|start_header_id|>assistant<|end_header_id|>"
         return f"{system_msg}{user_msg}{assistant_start}"
 
     def generate_responses(
-            self, prompts: List[str], sampling_params: SamplingParams
+        self, prompts: List[str], sampling_params: SamplingParams
     ) -> Dict[str, str]:
         requests = [self.make_prompt(prompt) for prompt in prompts]
         responses = self.model.generate(requests, sampling_params, use_tqdm=True)
         return {
-            prompt: response.outputs[0].text for prompt, response in zip(prompts, responses)
+            prompt: response.outputs[0].text
+            for prompt, response in zip(prompts, responses)
         }
 
 
 class MockLLMProvider(BaseLLMProvider):
-    def generate_responses(self, prompts: List[str], sampling_params: SamplingParams) -> Dict[str, str]:
+    def generate_responses(
+        self, prompts: List[str], sampling_params: SamplingParams
+    ) -> Dict[str, str]:
         result = {}
         for prompt in prompts:
             generator = random.Random(str(sampling_params.seed) + prompt)
             answer_length = generator.randint(100, 200)
-            answer = ''.join(generator.choice(string.ascii_letters) for _ in range(answer_length))
+            answer = "".join(
+                generator.choice(string.ascii_letters) for _ in range(answer_length)
+            )
             result[prompt] = answer
         return result
 
 
 def _run_server(
-        start_server_event: mp.Event,
-        seed_queue: mp.Queue,
-        result_queue: mp.Queue,
-        ready_to_terminate_event: mp.Event,
-        config: Config,
+    start_server_event: mp.Event,
+    seed_queue: mp.Queue,
+    result_queue: mp.Queue,
+    ready_to_terminate_event: mp.Event,
+    config: Config,
 ):
     start_server_event.wait()
 
@@ -112,11 +121,7 @@ def _run_server(
 
 
 class BaseSolver(abc.ABC):
-    def __init__(
-            self,
-            provider: BaseLLMProvider,
-            config: Config
-    ):
+    def __init__(self, provider: BaseLLMProvider, config: Config):
         self.provider = provider
         self.config = config
 
@@ -148,7 +153,6 @@ class BaseSolver(abc.ABC):
 
 
 class CLISolver(BaseSolver):
-
     def run(self):
         self.config.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -169,7 +173,9 @@ class HttpSolver(BaseSolver):
 
     def save_output_file(self, responses: Dict[str, str], output_file: pathlib.Path):
         response_body = json.dumps(responses, indent=2, sort_keys=True).encode()
-        self.response_hashes[output_file.as_posix()] = hashlib.sha256(response_body).hexdigest()
+        self.response_hashes[output_file.as_posix()] = hashlib.sha256(
+            response_body
+        ).hexdigest()
         pathlib.Path(output_file).write_bytes(response_body)
 
     def run(self):
@@ -181,7 +187,7 @@ class HttpSolver(BaseSolver):
                 self.result_queue,
                 self.ready_to_terminate_event,
                 self.config,
-            )
+            ),
         )
         process.start()
 

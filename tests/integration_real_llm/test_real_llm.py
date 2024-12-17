@@ -12,11 +12,14 @@ from huggingface_hub import snapshot_download
 TIMEOUT = 180
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def download_model():
     snapshot_download(
         repo_id="microsoft/Phi-3.5-mini-instruct",
-        local_dir=pathlib.Path(__file__).parent.parent.parent / "src" / "compute_horde_prompt_solver" / "saved_model/",
+        local_dir=pathlib.Path(__file__).parent.parent.parent
+        / "src"
+        / "compute_horde_prompt_solver"
+        / "saved_model/",
         revision="cd6881a82d62252f5a84593c61acf290f15d89e3",
     )
 
@@ -34,17 +37,24 @@ def test_cli(input_file, seed, expected_output_file):
             sys.executable,
             "-m",
             "src.compute_horde_prompt_solver",
-            "--temperature", "0.5",
-            "--top-p", "0.8",
-            "--max-tokens", "256",
-            "--seed", seed,
-            "--output-dir", tempfile.gettempdir(),
+            "--temperature",
+            "0.5",
+            "--top-p",
+            "0.8",
+            "--max-tokens",
+            "256",
+            "--seed",
+            seed,
+            "--output-dir",
+            tempfile.gettempdir(),
             input_file,
         ],
         timeout=TIMEOUT,
     )
-    expected = (pathlib.Path(__file__).parent.parent / "payload" / expected_output_file).read_text()
-    actual = pathlib.Path(input_file + '.json').read_text()
+    expected = (
+        pathlib.Path(__file__).parent.parent / "payload" / expected_output_file
+    ).read_text()
+    actual = pathlib.Path(input_file + ".json").read_text()
     assert expected == actual
 
 
@@ -59,7 +69,9 @@ def get_url_within_time(url, timeout=TIMEOUT):
         except (requests.HTTPError, requests.ConnectionError):
             pass
 
-        time.sleep(0.5)  # Wait a bit before trying again to not overload the server and your machine.
+        time.sleep(
+            0.5
+        )  # Wait a bit before trying again to not overload the server and your machine.
 
     raise TimeoutError(f"Could not get data from {url} within {timeout} seconds")
 
@@ -77,27 +89,34 @@ def test_http(input_file, seed, expected_output_file):
             sys.executable,
             "-m",
             "src.compute_horde_prompt_solver",
-            "--temperature", "0.5",
-            "--top-p", "0.8",
-            "--max-tokens", "256",
-            "--output-dir", tempfile.gettempdir(),
+            "--temperature",
+            "0.5",
+            "--top-p",
+            "0.8",
+            "--max-tokens",
+            "256",
+            "--output-dir",
+            tempfile.gettempdir(),
             "--server",
             input_file,
         ],
     )
     try:
-        base_url = 'http://localhost:8000/'
-        get_url_within_time(base_url + 'health')
+        base_url = "http://localhost:8000/"
+        get_url_within_time(base_url + "health")
 
-        import time
-        with requests.post(base_url + 'execute-job', json={"seed": seed}) as resp:
+        with requests.post(base_url + "execute-job", json={"seed": seed}) as resp:
             resp.raise_for_status()
             hashes = resp.json()
         try:
-            requests.get(base_url + 'terminate')
-        except:
+            requests.get(base_url + "terminate")
+        except Exception:
             pass
-        assert hashes == {input_file + '.json': hashlib.sha256(pathlib.Path(input_file + '.json').read_bytes()).hexdigest()}
+        assert hashes == {
+            input_file + ".json": hashlib.sha256(
+                pathlib.Path(input_file + ".json").read_bytes()
+            ).hexdigest()
+        }
     finally:
         server.terminate()
         server.wait()

@@ -51,11 +51,12 @@ def parse_arguments() -> Config:
         "--top-p", type=float, default=0.1, help="Top-p sampling parameter"
     )
     parser.add_argument(
-        "--dtype", default="auto",
+        "--dtype",
+        default="auto",
         choices=("auto", "half", "float16", "bfloat16", "float", "float32"),
         help=(
             "model dtype - setting `float32` helps with deterministic prompts in different batches"
-        )
+        ),
     )
 
     seed_or_server_group = parser.add_mutually_exclusive_group(required=True)

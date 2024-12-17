@@ -15,6 +15,6 @@ def input_file() -> str:
     if os.path.isfile(tmp_path):
         os.remove(tmp_path)
 
-    output_file = tmp_path + '.json'
+    output_file = tmp_path + ".json"
     if os.path.isfile(output_file):
         os.remove(output_file)
