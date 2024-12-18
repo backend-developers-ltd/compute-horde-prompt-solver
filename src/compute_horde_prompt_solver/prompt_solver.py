@@ -102,6 +102,10 @@ def _run_server(
             seed = int(seed_raw)
             seed_queue.put(seed)
             result = result_queue.get(timeout=TIMEOUT)
+
+            # for synthetic streaming jobs terminate the container after successfull execution
+            ready_to_terminate_event.set()
+
             return jsonify(result)
         finally:
             # The seed_queue.put(seed) can fail (request not having int seed etc.),
