@@ -1,4 +1,5 @@
 import abc
+import time
 import hashlib
 import json
 import multiprocessing as mp
@@ -214,5 +215,6 @@ class HttpSolver(BaseSolver):
                 self.process_file(input_file, sampling_params)
             self.result_queue.put(self.response_hashes)
             self.ready_to_terminate_event.wait(timeout=TIMEOUT)
+            time.sleep(2)
         finally:
             process.terminate()
