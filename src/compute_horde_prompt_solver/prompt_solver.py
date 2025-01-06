@@ -7,6 +7,7 @@ import pathlib
 import queue
 import random
 import string
+import logging
 from typing import List, Dict
 
 import torch
@@ -19,7 +20,9 @@ from deterministic_ml.v1 import set_deterministic
 
 from .config import Config
 
-TIMEOUT = 5 * 60
+logger = logging.getLogger(__name__)
+
+TIMEOUT = 20 * 60
 
 
 class BaseLLMProvider(abc.ABC):
@@ -99,10 +102,17 @@ def _run_server(
         try:
             from flask import request
 
-            seed_raw = request.json.get("seed")
+            logger.info(f"Triggered executr job with: {request.json=}")
+            if request.json is None:
+                return ({"error": "No json data provided"},)
+            seed_raw = request.json.get("seed", None)
+            if seed_raw is None:
+                return ({"error": "No seed provided"},)
             seed = int(seed_raw)
+            logger.debug(f"put seed {seed} in seed_queue")
             seed_queue.put(seed)
             result = result_queue.get(timeout=TIMEOUT)
+            logger.debug("fetched result from result_queue")
 
             # for synthetic streaming jobs terminate the container after successfull execution
             ready_to_terminate_event.set()
@@ -201,7 +211,9 @@ class HttpSolver(BaseSolver):
         self.start_server_event.set()
 
         try:
+            logger.debug("waiting to fetch from seed_queue")
             seed = self.seed_queue.get(block=True, timeout=TIMEOUT)
+            logger.debug(f"fetched seed {seed}")
         except queue.Empty:
             seed = None
 
@@ -211,8 +223,10 @@ class HttpSolver(BaseSolver):
         sampling_params = self.get_sampling_params(seed)
 
         try:
+            logger.debug("running inference")
             for input_file in self.config.input_files:
                 self.process_file(input_file, sampling_params)
+            logger.debug("put result in result_queue")
             self.result_queue.put(self.response_hashes)
             self.ready_to_terminate_event.wait(timeout=TIMEOUT)
             time.sleep(2)
